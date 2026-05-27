@@ -1,0 +1,21 @@
+[Unit]
+Description=ll-router FastAPI service
+After=network-online.target
+Wants=network-online.target
+After=llama-server-gemma-26b-a4b.service
+Wants=llama-server-gemma-26b-a4b.service
+
+[Service]
+Type=simple
+User=pavel
+Group=pavel
+WorkingDirectory=/home/pavel/ll-router
+Environment=LL_ROUTER_HOST=0.0.0.0
+Environment=LL_ROUTER_PORT=8000
+Environment=LL_ROUTER_RELOAD=0
+ExecStart=/home/pavel/ll-router/.venv/bin/python -m ll_router.main
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

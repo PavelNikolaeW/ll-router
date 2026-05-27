@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: $0 <preset>"
+  echo "presets:"
+  echo "  gemma-8slot-q4"
+  echo "  gemma-4slot-q4"
+  echo "  gemma-2slot-q8"
+  echo "  gemma-1slot-f16"
+  echo "  gemma-4slot-q8"
+  echo "  gemma-8slot-q8"
+  echo "  gemma-4slot-f16"
+  exit 1
+fi
+
+PRESET="$1"
+case "$PRESET" in
+  gemma-max-vram) PRESET="gemma-8slot-q4" ;;
+  gemma-long-4) PRESET="gemma-4slot-q4" ;;
+  gemma-max-ctx) PRESET="gemma-1slot-f16" ;;
+  gemma-2slot-q4) PRESET="gemma-2slot-q8" ;;
+  gemma-fast-8) PRESET="gemma-8slot-q4" ;;
+esac
+
+SRC="/home/pavel/ll-router/systemd/presets/${PRESET}.env"
+DST="/etc/default/llama-server-gemma-26b-a4b"
+
+if [[ ! -f "$SRC" ]]; then
+  echo "preset not found: $PRESET" >&2
+  exit 1
+fi
+
+sudo cp "$SRC" "$DST"
+sudo systemctl daemon-reload
+sudo systemctl restart llama-server-gemma-26b-a4b.service
+sudo systemctl restart ll-router.service
+
+echo "applied preset: $PRESET"
+systemctl --no-pager --full status llama-server-gemma-26b-a4b.service ll-router.service | sed -n '1,40p'

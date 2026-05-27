@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  echo "usage: $0 <name> [slot_id]"
+  exit 1
+fi
+
+NAME="$1"
+SLOT_ID="${2:-0}"
+URL="http://127.0.0.1:8001/slots/${SLOT_ID}?action=save"
+
+curl -fsS -X POST "$URL" \
+  -H 'Content-Type: application/json' \
+  -d "{\"filename\":\"${NAME}.bin\"}"
+
+echo
+echo "saved slot ${SLOT_ID} -> /home/pavel/jarvis/llama-slot-cache/gemma-26b-a4b/${NAME}.bin"

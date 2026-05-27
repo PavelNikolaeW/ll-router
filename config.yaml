@@ -1,0 +1,70 @@
+# GPU pinning is handled at the systemd unit level: slot-A pinned to GPU1
+# via drop-in (CUDA_VISIBLE_DEVICES=1), 31b-mtp keeps tensor-split 12,1.
+# Both services coexist permanently — orchestrator just ensures target is
+# running before proxying (no swap-out of peers).
+# health_url: probed after start to confirm the model is loaded and ready.
+backends:
+- name: gemma-26b-a4b
+  # Route via llama-home-router :8001 so its proxy-capture metrics
+  # (llama_home_last_*, requests_total) update on every inference call.
+  # llama-home-router compares slot/request via resolved Path, accepting
+  # both short basename and full relative path aliases.
+  url: http://localhost:8001
+  type: gpu
+  max_concurrent: 1
+  service: llama-server-home@A.service
+  health_url: http://localhost:8101/health
+  models:
+    gemma-26b-a4b: gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
+# qwen-35b alias deliberately mapped to the CPU backend below.
+# Reason: when slot-A and 31b-mtp run concurrently (no GPU mutex), GPU1 has
+# only ~21 GiB free (31b-mtp tail takes 2.6 GiB), and qwen Q4_K_P needs 22 GiB.
+# Loading qwen into slot-A OOMs and crash-loops the slot. CPU variant
+# (-t 32, MoE 3B active) sustains ~31 tok/s, perfectly usable for chat.
+- name: gemma-31b-mtp
+  # 31B-it dense + MTP draft on fork binary (atomic-llama-cpp-turboquant).
+  # Direct upstream — does NOT route via llama-home-router because the slot
+  # holds 31B statically and is served by a separate systemd unit
+  # (llama-server-31b-mtp.service). 2-GPU layer-split (-ts 12,1), ctx=65536.
+  url: http://localhost:8202
+  type: gpu
+  max_concurrent: 1
+  service: llama-server-31b-mtp.service
+  health_url: http://localhost:8202/health
+  models:
+    gemma-31b: gemma-4-31B-it-Q4_K_M.gguf
+    gemma-31b-mtp: gemma-4-31B-it-Q4_K_M.gguf
+- name: gemma-31b-cpu
+  url: http://localhost:8004
+  type: cpu
+  max_concurrent: 1
+  models:
+    gemma-31b-cpu: gemma-4-31B-it-Q4_K_M.gguf
+- name: gemma-26b-a4b-cpu
+  url: http://localhost:8005
+  type: cpu
+  max_concurrent: 1
+  models:
+    gemma-26b-a4b-cpu: gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
+- name: qwen-35b-cpu
+  url: http://localhost:8006
+  type: cpu
+  max_concurrent: 1
+  models:
+    # Both aliases route to the same CPU backend so existing clients
+    # asking for `qwen-35b` keep working (degraded from GPU to CPU).
+    qwen-35b: Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf
+    qwen-35b-cpu: Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf
+# Multilingual embedding backend on GPU0. GPU0 was chosen because GPU1
+# (~1.4 GiB free) is too tight for fp16 weights + activations; GPU0 has
+# ~1.8 GiB free (idle 31b-mtp weights). Pilot Δ VRAM ≈ 624 MiB (2026-05-27),
+# leaving ~1.2 GiB headroom. Setup: see `home-llama/docs/EMBEDDINGS.md`.
+- name: bge-m3-gpu0
+  url: http://localhost:8007
+  type: gpu
+  kind: embedding
+  max_concurrent: 4
+  service: llama-server-bge-m3.service
+  health_url: http://localhost:8007/health
+  models:
+    bge-m3: bge-m3-Q8_0.gguf

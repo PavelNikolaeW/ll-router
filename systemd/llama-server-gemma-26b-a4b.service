@@ -1,0 +1,17 @@
+[Unit]
+Description=llama.cpp server for Gemma 4 26B A4B
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pavel
+Group=pavel
+WorkingDirectory=/home/pavel
+EnvironmentFile=-/etc/default/llama-server-gemma-26b-a4b
+ExecStart=/home/pavel/llama.cpp/build/bin/llama-server --model ${MODEL_PATH} --host ${HOST} --port ${PORT} -ngl ${N_GPU_LAYERS} -c ${CTX_SIZE} --parallel ${PARALLEL} --cache-type-k ${CACHE_TYPE_K} --cache-type-v ${CACHE_TYPE_V} --slot-save-path ${SLOT_SAVE_PATH} --cont-batching
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

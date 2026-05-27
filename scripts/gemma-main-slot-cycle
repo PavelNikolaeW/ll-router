@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 2 ]]; then
+  echo "usage: $0 <save-name> <preset>"
+  echo "example: $0 jarvis-main gemma-8slot-q4"
+  exit 1
+fi
+
+SAVE_NAME="$1"
+PRESET="$2"
+
+/home/pavel/ll-router/scripts/gemma-slot-save "$SAVE_NAME" 0
+/home/pavel/ll-router/scripts/gemma-mode "$PRESET"
+
+echo
+echo "main slot saved as ${SAVE_NAME}.bin and mode switched to ${PRESET}"
+echo "to restore later:"
+echo "  /home/pavel/ll-router/scripts/gemma-mode gemma-1slot-f16"
+echo "  /home/pavel/ll-router/scripts/gemma-slot-restore ${SAVE_NAME} 0"
